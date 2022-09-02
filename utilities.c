@@ -81,12 +81,13 @@ int echo(int argc, char **argv)
 
 int exit_shell(int argc, char **argv)
 {
+    write_history(HISTORY_FILE);
 	exit(0);
 }
 
 int jobs(int argc, char **argv)
 {
-	system("jobs");
+    	system("ps -a");
 	return 0;
 }
 
@@ -105,12 +106,13 @@ int print_history(int argc, char** argv)
   	HISTORY_STATE *myhist = history_get_history_state ();
 
     printf ("\n<<< session history >>>\n");
-    for (int i = 1; i <= myhist->length; i++) { /* output history list */
+    for (int i = 1; i <= myhist->length; i++) /* output history list */
+    { 
   		HIST_ENTRY *entry = history_get(i);
-        printf ("%d -->  %s\n", i, entry->line);
+        printf ("%-5d -->  %s\n", i, entry->line);
 
     }
-    puts("-----------\n");
+    puts("-------------------\n");
 
 	return 0;
 }
@@ -265,20 +267,24 @@ char* conditional_structure(int* argc, char** argv)
 	return str;
 }
 
-
-int Execute(char* command, int argc, char** argv)
-{	
-	internel_func_t *internel_func_ptr = internel_funcs;
-	int status;
+int interel_execute(char* command, int argc, char** argv)
+{
+    internel_func_t *internel_func_ptr = internel_funcs;
+    int status;
     while (internel_func_ptr->function_index)
     {
         if (strcmp(internel_func_ptr->function_index, command) == 0)
         {
             status = internel_func_ptr->function(argc, argv);
-            exit(status);
+            return 1;
         }
         internel_func_ptr++;
     }
+    return 0;
+}
+
+int Execute(char* command, int argc, char** argv)
+{	
 	return execvp(command, argv);
 }
 
