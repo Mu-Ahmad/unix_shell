@@ -4,8 +4,26 @@
 
 #include "headers/shell.h"
 
+void reaper(int sig)
+{
+   waitpid(-1, NULL, 0);
+}
+
+void exit_call(int sig)
+{
+	write_history(HISTORY_FILE);
+   exit(0);
+}
+
 int main()
 {
+	// Register Signal Handler
+	signal(SIGCHLD, reaper);
+	signal(SIGTERM, exit_call);
+
+	// Reading in the history
+	read_history(HISTORY_FILE);
+
 	// 0 is read end, 1 is write end
     int pipefd[2][2], curr_pipe = 0;
     pipe(pipefd[0]);
@@ -31,7 +49,7 @@ int main()
 			for (int j=0; j<piped_count; j++)
 			{	
 				// var = val
-				if (strstr(piped_out[j], " = ")) 
+				if (strstr(piped_out[j], " = ") && !strstr(piped_out[j], "if")) 
 				{
 					argv = parse_atomic_command(piped_out[j], &argc, " = ");
 					setenv(argv[0], argv[1], 1);
@@ -60,6 +78,11 @@ int main()
 				{
 					bg = 1;
 					argv[argc - 1][name_len - 1] = 0;
+				}
+
+				if (interel_execute(argv[0], argc, argv))
+				{
+					continue;
 				}
 				
 				pipe(pipefd[(curr_pipe+1) % 2]);
@@ -96,13 +119,10 @@ int main()
 				close(pipefd[(curr_pipe + 1) % 2][WRITEHEAD]);
 				curr_pipe = (curr_pipe + 1) % 2;
 				int status;
-				if (!bg && waitpid(pid, &status, 0) < 0) unix_error("waitpid error: ");
+				if (!bg && waitpid(-1, &status, 0)) {};
+				// if (!bg && pause()) {}
 				
 				if (bg) printf("Started [%d] in bg.", pid);
-				
-				if (strcmp(argv[0], "cd") == 0) internel_funcs->function(argc, argv);
-				else if (strcmp(argv[0], "exit") == 0) exit(0);
-				else if (strcmp(argv[0], "jobs") == 0) system("jobs");
 				
 				for (int i=0; i<argc; i++)
 					free(argv[i]), argv[i] = NULL;
